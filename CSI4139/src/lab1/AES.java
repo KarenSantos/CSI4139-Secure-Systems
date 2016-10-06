@@ -1,5 +1,11 @@
 package lab1;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.security.Key;
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
@@ -15,24 +21,57 @@ public class AES {
 	/**
 	 * The byte array that will be used to generate the secret key.
 	 */
-	private static final byte[] keyValue = new byte[] { 'T', 'h', 'e', 'B', 'e', 's', 't', 'S', 'e', 'c', 'r', 'e', 't',
-			'K', 'e', 'y' };
+	private byte[] keyValue;
+	
+	private Key key;
+
+	public AES(byte[] keyValueBytes) {
+		keyValue = keyValueBytes;
+		key = generateKey();
+	}
+	
+	public Key getKey(){
+		return key;
+	}
 
 	/**
 	 * Encrypts a string with the generated secret key.
 	 * 
-	 * @param Data
+	 * @param data
 	 *            The string to be encrypted.
 	 * @return The String with the encrypted data.
 	 * @throws Exception
 	 */
-	public static String encrypt(String Data) throws Exception {
+	public String encryptStringToString(String data) throws Exception {
 		Key key = generateKey();
 		Cipher c = Cipher.getInstance(ALGORITHM);
 		c.init(Cipher.ENCRYPT_MODE, key);
-		byte[] dataBytes = c.doFinal(Data.getBytes());
+		byte[] dataBytes = c.doFinal(data.getBytes());
 		String encryptedValue = new BASE64Encoder().encode(dataBytes);
 		return encryptedValue;
+	}
+
+	/**
+	 * Encrypts the data in a file with the generated secret key.
+	 * 
+	 * @param filePath
+	 *            The file with the data to be encrypted.
+	 * @return The File with the encrypted data.
+	 * @throws Exception
+	 */
+	public File encryptFileToFile(String filePath, String fileOutputPath) {
+		Key key = null;
+		String encryptedValue = null;
+		try {
+			key = generateKey();
+			Cipher c = Cipher.getInstance(ALGORITHM);
+			c.init(Cipher.ENCRYPT_MODE, key);
+			byte[] dataBytes = c.doFinal(fileToString(filePath).getBytes());
+			encryptedValue = new BASE64Encoder().encode(dataBytes);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return stringToFile(fileOutputPath, encryptedValue);
 	}
 
 	/**
@@ -41,15 +80,20 @@ public class AES {
 	 * @param encryptedData
 	 *            The data to be decrypted.
 	 * @return The String with the decrypted data.
-	 * @throws Exception
 	 */
-	public static String decrypt(String encryptedData) throws Exception {
-		Key key = generateKey();
-		Cipher c = Cipher.getInstance(ALGORITHM);
-		c.init(Cipher.DECRYPT_MODE, key);
-		byte[] decordedValue = new BASE64Decoder().decodeBuffer(encryptedData);
-		byte[] decValue = c.doFinal(decordedValue);
-		String decryptedValue = new String(decValue);
+	public String decryptStringToString(String encryptedData) {
+		Key key = null;
+		String decryptedValue = null;
+		try {
+			key = generateKey();
+			Cipher c = Cipher.getInstance(ALGORITHM);
+			c.init(Cipher.DECRYPT_MODE, key);
+			byte[] decordedValue = new BASE64Decoder().decodeBuffer(encryptedData);
+			byte[] decValue = c.doFinal(decordedValue);
+			decryptedValue = new String(decValue);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 		return decryptedValue;
 	}
 
@@ -57,25 +101,79 @@ public class AES {
 	 * Generates a Key with the final byte array and the algorithm specified.
 	 * 
 	 * @return The Key generated.
-	 * @throws Exception
 	 */
-	private static Key generateKey() throws Exception {
+	private Key generateKey() {
 		Key key = new SecretKeySpec(keyValue, ALGORITHM);
 		return key;
 	}
 
+	// /**
+	// * Generates a Key with the input string using the specified Algorithm.
+	// *
+	// * @param secKey
+	// * The string used to generate the key.
+	// * @return The Key generated.
+	// * @throws Exception
+	// */
+	// private Key generateKeyFromString(final String secKey) throws Exception {
+	// final byte[] keyVal = new BASE64Decoder().decodeBuffer(secKey);
+	// final Key key = new SecretKeySpec(keyVal, ALGORITHM);
+	// return key;
+	// }
+
 	/**
-	 * Generates a Key with the input string using the specified Algorithm.
+	 * Takes a file and turns it into a string.
 	 * 
-	 * @param secKey
-	 *            The string used to generate the key.
-	 * @return The Key generated.
-	 * @throws Exception
+	 * @param path
+	 *            The path of the file.
+	 * @return The string with the content of the file or null the the file
+	 *         doesn't exist.
+	 * @throws IOException
 	 */
-	private Key generateKeyFromString(final String secKey) throws Exception {
-		final byte[] keyVal = new BASE64Decoder().decodeBuffer(secKey);
-		final Key key = new SecretKeySpec(keyVal, ALGORITHM);
-		return key;
+	private static String fileToString(String path) throws IOException {
+		String fileString = null;
+		String currentLine;
+		File file = new File(path);
+
+		if (file.exists()) {
+			BufferedReader brL = new BufferedReader(new FileReader(path));
+			while ((currentLine = brL.readLine()) != null) {
+				fileString += currentLine + "\n";
+			}
+			brL.close();
+		}
+		return fileString;
+	}
+
+	/**
+	 * Takes a string and puts it in a text file.
+	 * 
+	 * @param path
+	 *            The path of the new file.
+	 * @param text
+	 *            The string to be put in the file.
+	 * @return The file created with the string.
+	 */
+	private static File stringToFile(String path, String text) {
+
+		File file = new File(path);
+		try {
+
+			// Create files to store public and private key
+			if (file.getParentFile() != null) {
+				file.getParentFile().mkdirs();
+			}
+			file.createNewFile();
+
+			// Saving the Public key in a file
+			ObjectOutputStream os = new ObjectOutputStream(new FileOutputStream(file));
+			os.writeObject((Object) text);
+			os.close();
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		return file;
 	}
 
 }

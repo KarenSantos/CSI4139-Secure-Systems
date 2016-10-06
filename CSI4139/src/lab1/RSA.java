@@ -1,44 +1,183 @@
 package lab1;
 
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectOutputStream;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.Signature;
 
 import javax.crypto.Cipher;
 
 public class RSA {
 
 	/**
-	 * String to hold name of the encryption algorithm.
+	 * Strings to hold name of the encryption algorithm.
 	 */
 	private static final String ALGORITHM = "RSA";
+	private static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
+
+	private final static String PRIVATE = "resources/keys/private_";
+	private final static String PUBLIC = "resources/keys/public_";
+	private final static String KEY = ".key";
+
+	private String privateKeyName;
+	private String publicKeyName;
+	private PrivateKey privateKey;
+	private PublicKey publicKey;
+
+	public RSA(String pairName) {
+		this.privateKeyName = PRIVATE + pairName + KEY;
+		this.publicKeyName = PUBLIC + pairName + KEY;
+		generateKey();
+	}
+
+	public PrivateKey getPrivateKey() {
+		return privateKey;
+	}
+
+	public PublicKey getPublicKey() {
+		return publicKey;
+	}
 
 	/**
-	 * String to hold the name of the private key file.
+	 * Encrypt the plain text using public key.
+	 * 
+	 * @param text
+	 *            The original plain text.
+	 * @return The encrypted text in a byte array.
+	 * @throws java.lang.Exception
 	 */
-	public static final String PRIVATE_KEY_FILE = "resources/keys/private.key";
+	public byte[] encrypt(String text) {
+		byte[] cipherText = null;
+		try {
+			final Cipher cipher = Cipher.getInstance(ALGORITHM);
+			cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+			cipherText = cipher.doFinal(text.getBytes());
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return cipherText;
+		// TODO should encrypt with any PUkey
+	}
 
 	/**
-	 * String to hold name of the public key file.
+	 * Decrypt text using private key.
+	 * 
+	 * @param text
+	 *            The encrypted text in a byte array.
+	 * @return The decrypted text as a string.
+	 * @throws java.lang.Exception
 	 */
-	public static final String PUBLIC_KEY_FILE = "resources/keys/public.key";
+	public String decrypt(byte[] text) {
+		byte[] decryptedText = null;
+		try {
+			final Cipher cipher = Cipher.getInstance(ALGORITHM);
+			cipher.init(Cipher.DECRYPT_MODE, privateKey);
+			decryptedText = cipher.doFinal(text);
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
+		return new String(decryptedText);
+	}
+
+	/**
+	 * Signs the content of a specified file with the private key of this
+	 * instance.
+	 * 
+	 * @param dataFilePath
+	 *            The path of the file to be signed.
+	 * @return The file with the signature content.
+	 */
+	public File sign(String dataFilePath) {
+
+		File dataFile = new File(dataFilePath);
+		File signature = new File(privateKeyName);
+		Signature dsa = null;
+		byte[] realSig = null;
+
+		try {
+			dsa = Signature.getInstance(SIGNATURE_ALGORITHM);
+
+			dsa.initSign(privateKey);
+
+			// Reading the data file to sign
+			FileInputStream fis = new FileInputStream(dataFile);
+			BufferedInputStream bufin = new BufferedInputStream(fis);
+			byte[] buffer = new byte[1024];
+			int len;
+			while ((len = bufin.read(buffer)) >= 0) {
+				dsa.update(buffer, 0, len);
+			}
+			;
+			bufin.close();
+
+			// Signing
+			realSig = dsa.sign();
+
+			// Putting signature in a file
+			FileOutputStream output = new FileOutputStream(signature);
+			output.write(realSig);
+			output.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return signature;
+	}
+
+	public boolean verifySignature(String signatureFilePath, String dataPath, PublicKey pk) {
+
+		FileInputStream sigfis = null;
+		boolean verification = false;
+		try {
+			sigfis = new FileInputStream(signatureFilePath);
+			byte[] sigToVerify = new byte[sigfis.available()];
+			sigfis.read(sigToVerify);
+			sigfis.close();
+
+			Signature sig = Signature.getInstance(ALGORITHM);
+			sig.initVerify(pk);
+
+			FileInputStream datafis = new FileInputStream(dataPath);
+			BufferedInputStream bufin = new BufferedInputStream(datafis);
+
+			byte[] buffer = new byte[1024];
+			int len;
+			while (bufin.available() != 0) {
+				len = bufin.read(buffer);
+				sig.update(buffer, 0, len);
+			}
+			;
+
+			bufin.close();
+			verification = sig.verify(sigToVerify);
+
+			System.out.println("signature verifies: " + true);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return verification;
+	}
 
 	/**
 	 * Generate key which contains a pair of private and public key using 1024
 	 * bytes. Store the set of keys in Prvate.key and Public.key files.
 	 */
-	public static void generateKey() {
+	private void generateKey() {
 		try {
 			final KeyPairGenerator keyGen = KeyPairGenerator.getInstance(ALGORITHM);
 			keyGen.initialize(1024);
 			final KeyPair key = keyGen.generateKeyPair();
+			privateKey = key.getPrivate();
+			publicKey = key.getPublic();
 
-			File privateKeyFile = new File(PRIVATE_KEY_FILE);
-			File publicKeyFile = new File(PUBLIC_KEY_FILE);
+			File privateKeyFile = new File(privateKeyName);
+			File publicKeyFile = new File(publicKeyName);
 
 			// Create files to store public and private key
 			if (privateKeyFile.getParentFile() != null) {
@@ -63,66 +202,5 @@ public class RSA {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-	}
-
-	/**
-	 * Checks if the pair of public and private key has been generated.
-	 * 
-	 * @return flag indicating if the pair of keys were generated.
-	 */
-	public static boolean areKeysPresent() {
-
-		File privateKey = new File(PRIVATE_KEY_FILE);
-		File publicKey = new File(PUBLIC_KEY_FILE);
-
-		if (privateKey.exists() && publicKey.exists()) {
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * Encrypt the plain text using public key.
-	 * 
-	 * @param text
-	 *            The original plain text.
-	 * @param key
-	 *            The public key.
-	 * @return The encrypted text.
-	 * @throws java.lang.Exception
-	 */
-	public static byte[] encrypt(String text, PublicKey key) {
-		byte[] cipherText = null;
-		try {
-			final Cipher cipher = Cipher.getInstance(ALGORITHM);
-			cipher.init(Cipher.ENCRYPT_MODE, key);
-			cipherText = cipher.doFinal(text.getBytes());
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		return cipherText;
-	}
-
-	/**
-	 * Decrypt text using private key.
-	 * 
-	 * @param text
-	 *            The encrypted text.
-	 * @param key
-	 *            The private key.
-	 * @return The decrypted text.
-	 * @throws java.lang.Exception
-	 */
-	public static String decrypt(byte[] text, PrivateKey key) {
-		byte[] decryptedText = null;
-		try {
-			final Cipher cipher = Cipher.getInstance(ALGORITHM);
-			cipher.init(Cipher.DECRYPT_MODE, key);
-			decryptedText = cipher.doFinal(text);
-		} catch (Exception ex) {
-			ex.printStackTrace();
-		}
-		return new String(decryptedText);
 	}
 }

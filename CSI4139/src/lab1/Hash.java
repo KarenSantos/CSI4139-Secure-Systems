@@ -1,19 +1,13 @@
 package lab1;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
 
 public class Hash {
 
@@ -103,7 +97,6 @@ public class Hash {
 		File file = new File(path);
 
 		if (file.exists()) {
-//			fileString = "";
 			BufferedReader brL = new BufferedReader(new FileReader(path));
 			while ((currentLine = brL.readLine()) != null) {
 				fileString += currentLine + "\n";
