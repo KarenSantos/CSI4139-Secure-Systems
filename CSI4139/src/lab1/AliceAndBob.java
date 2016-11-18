@@ -9,6 +9,7 @@ import java.io.ObjectInputStream;
 import java.security.Key;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import com.sun.org.apache.xml.internal.security.utils.Base64;
 
 public class AliceAndBob {
 
@@ -18,8 +19,9 @@ public class AliceAndBob {
 	private static final String HASHED_TEXT_PATH = "resources/results/HashedText.txt";
 	private static final String SIGNATURE_ALICE = "resources/results/AliceSignature.txt";
 	private static final String SYM_ENCRYPTED_TEXT_PATH = "resources/results/SymEncryptedText.txt";
+	private static final String ENCRYPTED_SYM_KEY = "resources/results/EncryptedSymKey.txt";
 
-	private final static byte[] SYM_ALICE = new byte[] { 'T', 'h', 'e', 'B', 'e', 's', 't', 'S', 'e', 'c', 'r', 'e',
+	private final static byte[] SYM_VALUE = new byte[] { 'T', 'h', 'e', 'B', 'e', 's', 't', 'S', 'e', 'c', 'r', 'e',
 			't', 'K', 'e', 'y' };
 
 	// File = m
@@ -42,51 +44,75 @@ public class AliceAndBob {
 		// Generating key pair for Alice
 		System.out.println("Generating key pair for Alice.\n");
 		RSA rsaAlice = new RSA(ALICE_KEY);
-//		System.out.println(fileToString("resources/keys/private_AliceKey.key"));
+		// System.out.println(fileToString("resources/keys/private_AliceKey.key"));
 
 		// Generating key pair for Bob
 		System.out.println("Generating key pair for Bob.\n");
 		RSA rsaBob = new RSA(BOB_KEY);
-//		System.out.println(fileToString("resources/keys/private_BobKey.key"));
-		
+		// System.out.println(fileToString("resources/keys/private_BobKey.key"));
+
 		// Alice hashing the file
 		System.out.println("Alice hashing text.\n");
 		Hash.hashFileToFile(PLAIN_TEXT_PATH, HASHED_TEXT_PATH);
-//		System.out.println(fileToString("resources/results/HashedText.txt"));
+		// System.out.println(fileToString(HASHED_TEXT_PATH));
 
 		// Alice signing the hashed file
 		System.out.println("Alice signing hashed text.\n");
 		rsaAlice.sign(HASHED_TEXT_PATH);
-//		System.out.println(fileToString("resources/results/AliceSignature.txt"));
+		// System.out.println(fileToString(SIGNATURE_ALICE));
 
 		// Alice is encrypting PlainText with symmetric key
 		System.out.println("Alice is encrypting text with a symmetric key.\n");
-		AES aesAlice = new AES(SYM_ALICE);
-		System.out.println(aesAlice.getKey().toString() + "\n");
+		AES aesAlice = new AES(SYM_VALUE);
+		// System.out.println(aesAlice.getKey().toString() + "\n");
 		aesAlice.encryptFileToFile(PLAIN_TEXT_PATH, SYM_ENCRYPTED_TEXT_PATH);
-		System.out.println(fileToString("resources/results/SymEncryptedText.txt"));
+		// System.out.println(fileToString(SYM_ENCRYPTED_TEXT_PATH));
 
-//		// Alice using Bob's Public Key to Encrypt her Symmetric Key
-//		byte[] encryptedSym = rsaBob.encrypt(aesAlice.getKey().toString());
-//		System.out.println("Alice encrypts her symmetric key with Bob's Public key.\n");
-//
-//		System.out.println("\n ---- SENDING FILES TO BOB ----\n");
-//
-//		// Bob decrypting Alice's symmetric key with his Private Key
-//		rsaBob.decrypt(encryptedSym);
-//		System.out.println("Bob decrypts Alice's symmetric key with his Private Key.\n");
-//
-//		// Bob decrypts message with Alices symmetric key
-//		String dec = aesAlice.decryptStringToString(fileToString(SYM_ENCRYPTED_TEXT_PATH));
-//		System.out.println("Bob decrypts the encrypted text with Alice's symmetric key.\n");
-//
-//		// Bob hashing the decrypted message
-//		System.out.println("Bob hashing the decrypted message.\n");
-//		Hash.hashFileToFile(PLAIN_TEXT_PATH, "resources/HashedText2.txt");
-//
-//		// Bob using Alices's PK to verify signature on Hashed text
-//		System.out.println("Bob verifies the signature on the hashed file.\n");
-//		System.out.println("Signature verified: " + true);
+		// Alice using Bob's Public Key to Encrypt her Symmetric Key
+		System.out.println("Alice encrypts her symmetric key with Bob's Public key.\n");
+		rsaAlice.encryptFileToFile(aesAlice.keyToString(), rsaBob.getPublicKey(), ENCRYPTED_SYM_KEY);
+		// System.out.println(fileToString(ENCRYPTED_SYM_KEY));
+
+		System.out.println("\n ---- SENDING FILES TO BOB ----\n");
+
+		// Bob decrypting Alice's symmetric key with his Private Key
+		System.out.println("Bob decrypts Alice's symmetric key with his Private Key.\n");
+		String encodedKey = rsaBob.decryptFile(ENCRYPTED_SYM_KEY);
+		System.out.println(encodedKey);
+
+		// // decode the base64 encoded string
+		// byte[] decodedKey = Base64.decode(fileToString(path))
+		//
+		// .getDecoder().decode(encodedKey);
+		// // rebuild key using SecretKeySpec
+		// SecretKey originalKey = new SecretKeySpec(decodedKey, 0,
+		// decodedKey.length, "AES");
+		//
+		// Key symKey = new Key();
+
+		// // Bob decrypts message with Alices symmetric key
+		// System.out.println("Bob decrypts the encrypted text with Alice's
+		// symmetric key.\n");
+		// String dec =
+		// aesAlice.decryptStringToString(fileToString(SYM_ENCRYPTED_TEXT_PATH));
+		//
+		// // Bob hashing the decrypted message
+		// System.out.println("Bob hashing the decrypted message.\n");
+		// Hash.hashFileToFile(PLAIN_TEXT_PATH, "resources/HashedText2.txt");
+		//
+		// // Bob using Alices's PK to verify signature on Hashed text
+		// System.out.println("Bob verifies the signature on the hashed
+		// file.\n");
+		// System.out.println("Signature verified: " + true);
+	}
+
+	public static void RSATest() {
+
+		RSA rsaAlice = new RSA(ALICE_KEY);
+		RSA rsaBob = new RSA(BOB_KEY);
+		String encrypted = rsaAlice.encrypt("my text to be encrypted", rsaBob.getPublicKey()).toString();
+		
+		
 	}
 
 	public static void hashTest() {

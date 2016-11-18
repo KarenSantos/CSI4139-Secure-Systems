@@ -7,9 +7,14 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.security.Key;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.SecretKeySpec;
+
+import com.sun.org.apache.xml.internal.security.utils.Base64;
+
 import sun.misc.*;
+//import org.apache.commons.codec.binary.Base64;
 
 public class AES {
 
@@ -22,16 +27,36 @@ public class AES {
 	 * The byte array that will be used to generate the secret key.
 	 */
 	private byte[] keyValue;
-	
+
 	private Key key;
 
+	/**
+	 * Creates a secret symmetric key based on the specified byte array.
+	 * 
+	 * @param keyValueBytes
+	 *            The byte array to be used to generate the key.
+	 */
 	public AES(byte[] keyValueBytes) {
 		keyValue = keyValueBytes;
 		key = generateKey();
 	}
-	
-	public Key getKey(){
+
+	/**
+	 * Returns the symmetric key.
+	 * 
+	 * @return The symmetric key.
+	 */
+	public Key getKey() {
 		return key;
+	}
+
+	// TODO Careful with this method!
+	public String keyToString() {
+		String stringKey = "";
+		if (key != null) {
+			stringKey = Base64.encode(key.getEncoded());
+		}
+		return stringKey;
 	}
 
 	/**
