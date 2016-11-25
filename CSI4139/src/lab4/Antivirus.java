@@ -1,8 +1,10 @@
 package lab4;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.MessageDigest;
@@ -16,8 +18,6 @@ import org.apache.commons.codec.binary.Hex;
 public class Antivirus {
 
 	final static String LAB4_PATH = "/Users/karensaroc/Dropbox/OttawaU Studies/CSI4139C/Labs/Lab4/";
-	public static final String ANSI_RESET = "\u001B[0m";
-	public static final String ANSI_RED = "\u001B[31m";
 
 	private static List<String> viruses;
 
@@ -53,18 +53,16 @@ public class Antivirus {
 		}
 	}
 
-	private static String scanFile(File file) {
-		String result = "No virus detected =)";
+	private static void scanFile(File file) {
 		String status = "Scanning file: " + file.getName();
 		System.out.println(status);
 
-		// scanContent(file);
-		if (scanHash(file)){
-			result = "    ALERT: Virus Detected!";
-			System.err.println(result);
+		if (virusInContent(file)){
+			System.err.println("    ALERT: Virus Detected in file content!");
 		}
-
-		return result;
+		if (virusInHash(file)) {
+			System.err.println("    ALERT: Virus Detected in file code!");
+		}
 	}
 
 	private static String scanFolder(File file) {
@@ -77,17 +75,34 @@ public class Antivirus {
 				scanFile(f);
 			}
 		}
-		System.out.println(result);
 		return result;
 	}
 
-	private static boolean scanContent(File file) {
+	private static boolean virusInContent(File file) {
 		boolean found = false;
-
+		String currentLine;
+		if (file.exists()) {
+			BufferedReader brL;
+			try {
+				brL = new BufferedReader(new FileReader(file));
+				while ((currentLine = brL.readLine()) != null) {
+					for (String virus : viruses){
+						if (currentLine.contains(virus)){
+							found = true;
+						}
+					}
+				}
+				brL.close();
+			} catch (FileNotFoundException e) {
+				e.printStackTrace();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		return found;
 	}
 
-	private static boolean scanHash(File file) {
+	private static boolean virusInHash(File file) {
 		boolean found = false;
 
 		MessageDigest md;
@@ -101,13 +116,11 @@ public class Antivirus {
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
-		
-		for (String virus : viruses){
-			if (virus.equals(hash)){
+		for (String virus : viruses) {
+			if (virus.equals(hash)) {
 				found = true;
 			}
 		}
-		
 		return found;
 	}
 
